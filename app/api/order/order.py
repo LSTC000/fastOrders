@@ -41,10 +41,13 @@ async def get_order(order_id: int, db_service: OrderDBService = Depends(order_db
 async def add_order(order_data: OrderAddSchema, db_service: OrderDBService = Depends(order_db_service)):
     response = BaseAPIResponse()
     try:
-        order_id = await db_service.add_order(order_data)
+        data = await db_service.add_order(order_data)
 
-        if order_id is not None:
-            response.data = {'order_id': order_id}
+        if data is not None:
+            response.data = {
+                'order_id': data[0],
+                'courier_id': data[1]
+            }
         else:
             response.status = StatusType.error
             response.detail = OrderDetails.add_order_error
