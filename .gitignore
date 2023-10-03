@@ -1,7 +1,7 @@
 .idea
 venv
 .env
-logs
-.pytest_cache
+logs/*
 **/__pycache__
 task
+test.py

@@ -1,11 +1,11 @@
-from .schemas import UserSchema, UserAddSchema, UserEditSchema
-from .services import UserDBService, UserEmailService
-from .dependencies import user_db_service, user_email_service
-from .details import UserDetails
+from .schemas import CourierGetSchema, CourierGetAllSchema, CourierAddSchema
+from .services import CourierDBService, CourierDistrictDBService, CourierOrderDBService
+from .dependencies import courier_db_service, courier_district_db_service, courier_order_db_service
+from .details import CourierDetails
+from .utils import Utils
 
 from app.common import config, Logger
 from app.utils.response import BaseAPIResponse, StatusType
-from app.api.post.schemas import PostSchema
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -16,142 +16,101 @@ router = APIRouter(prefix='/courier', tags=['Courier'])
 logger = Logger(name=__name__, log_path=config.courier_log_path).get_logger()
 
 
-@router.get('/{user_id}', response_model=BaseAPIResponse)
-async def get_user(
-        user_id: int,
-        db_service: UserDBService = Depends(user_db_service),
-        email_service: UserEmailService = Depends(user_email_service)
+@router.get('/{courier_id}', response_model=BaseAPIResponse)
+async def get_courier(
+        courier_id: int,
+        db_service: CourierDBService = Depends(courier_db_service),
+        order_db_service: CourierOrderDBService = Depends(courier_order_db_service),
 ):
     response = BaseAPIResponse()
     try:
-        user_data = await db_service.get_user(user_id)
+        courier_data = await db_service.get_courier(courier_id)
 
-        if user_data is not None:
-            response.data = {'user_data': UserSchema(**user_data)}
+        if courier_data is not None:
+            response.data = {
+                'courier_data': CourierGetSchema(
+                    id=courier_id,
+                    name=courier_data.get('name'),
+                    active_order=await order_db_service.get_active_order(courier_id),
+                    avg_order_complete_time=Utils.avg_order_complete_time(
+                        complete_time=courier_data.get('complete_time'),
+                        complete_orders=courier_data.get('complete_orders')
+                    ),
+                    avg_day_orders=Utils.avg_day_orders(
+                        complete_orders=courier_data.get('complete_orders'),
+                        works_days=courier_data.get('works_days')
+                    )
+                )
+            }
         else:
             response.status = StatusType.error
-            response.detail = UserDetails.get_user_error
+            response.detail = CourierDetails.get_courier_error
     except HTTPException as exc:
         response.status = StatusType.error
         response.detail = exc.detail
     except Exception as exc:
         response.status = StatusType.error
-        response.detail = UserDetails.exception_error
+        response.detail = CourierDetails.exception_error
         logger.error(exc)
-        email_service.send_error_log(str(exc))
     finally:
         return response
 
 
-@router.get('/posts/{user_id}', response_model=BaseAPIResponse)
-async def get_user_posts(
-        user_id: int,
-        db_service: UserDBService = Depends(user_db_service),
-        email_service: UserEmailService = Depends(user_email_service)
-):
+@router.get('/', response_model=BaseAPIResponse)
+async def get_couriers(db_service: CourierDBService = Depends(courier_db_service)):
     response = BaseAPIResponse()
     try:
-        user_data = await db_service.get_user(user_id, posts_data=True)
+        couriers_data = await db_service.get_couriers()
 
-        if user_data is not None:
+        if couriers_data is not None:
             response.data = {
-                'posts_data': [PostSchema(**post.__dict__) for post in user_data['posts']]
+                'couriers_data': [CourierGetAllSchema(**courier_data) for courier_data in couriers_data]
             }
         else:
             response.status = StatusType.error
-            response.detail = UserDetails.get_user_error
+            response.detail = CourierDetails.get_couriers_error
     except HTTPException as exc:
         response.status = StatusType.error
         response.detail = exc.detail
     except Exception as exc:
         response.status = StatusType.error
-        response.detail = UserDetails.exception_error
+        response.detail = CourierDetails.exception_error
         logger.error(exc)
-        email_service.send_error_log(str(exc))
     finally:
         return response
 
 
 @router.post('/', response_model=BaseAPIResponse)
-async def add_user(
-        user_data: UserAddSchema,
-        db_service: UserDBService = Depends(user_db_service),
-        email_service: UserEmailService = Depends(user_email_service)
+async def add_courier(
+        courier_data: CourierAddSchema,
+        db_service: CourierDBService = Depends(courier_db_service),
+        district_db_service: CourierDistrictDBService = Depends(courier_district_db_service)
 ):
     response = BaseAPIResponse()
     try:
-        user_id = await db_service.add_user(user_data)
+        courier_id = await db_service.add_courier(courier_data)
 
-        if user_id is not None:
-            response.data = {'user_id': user_id}
+        if courier_id is not None:
+            try:
+                await district_db_service.add_courier_districts(
+                    courier_id=courier_id,
+                    districts=courier_data.districts
+                )
+
+                response.data = {'courier_id': courier_id}
+            except IntegrityError:
+                response.status = StatusType.error
+                response.detail = CourierDetails.district_does_not_exist
+                await db_service.delete_courier(courier_id)
         else:
             response.status = StatusType.error
-            response.detail = UserDetails.add_user_error
-    except IntegrityError:
-        response.status = StatusType.error
-        response.detail = UserDetails.email_exist
+            response.detail = CourierDetails.add_courier_error
     except HTTPException as exc:
         response.status = StatusType.error
         response.detail = exc.detail
     except Exception as exc:
         response.status = StatusType.error
-        response.detail = UserDetails.exception_error
+        response.detail = CourierDetails.exception_error
         logger.error(exc)
-        email_service.send_error_log(str(exc))
-    finally:
-        return response
-
-
-@router.patch('/', response_model=BaseAPIResponse)
-async def edit_user(
-        user_id: int,
-        new_user_data: UserEditSchema,
-        db_service: UserDBService = Depends(user_db_service),
-        email_service: UserEmailService = Depends(user_email_service)
-):
-    response = BaseAPIResponse()
-    try:
-        user_id = await db_service.edit_user(user_id=user_id, new_user_data=new_user_data)
-
-        if user_id is not None:
-            response.data = {'user_id': user_id}
-        else:
-            response.status = StatusType.error
-            response.detail = UserDetails.edit_user_error
-    except HTTPException as exc:
-        response.status = StatusType.error
-        response.detail = exc.detail
-    except Exception as exc:
-        response.status = StatusType.error
-        response.detail = UserDetails.exception_error
-        logger.error(exc)
-        email_service.send_error_log(str(exc))
-    finally:
-        return response
-
-
-@router.delete('/', response_model=BaseAPIResponse)
-async def delete_user(
-        user_id: int,
-        db_service: UserDBService = Depends(user_db_service),
-        email_service: UserEmailService = Depends(user_email_service)
-):
-    response = BaseAPIResponse()
-    try:
-        user_id = await db_service.delete_user(user_id)
-
-        if user_id is not None:
-            response.data = {'user_id': user_id}
-        else:
-            response.status = StatusType.error
-            response.detail = UserDetails.delete_user_error
-    except HTTPException as exc:
-        response.status = StatusType.error
-        response.detail = exc.detail
-    except Exception as exc:
-        response.status = StatusType.error
-        response.detail = UserDetails.exception_error
-        logger.error(exc)
-        email_service.send_error_log(str(exc))
     finally:
         return response

@@ -1,6 +1,6 @@
 from .schemas import DistrictGetSchema, DistrictAddSchema
-from .services import DistrictDBService, DistrictEmailService
-from .dependencies import district_db_service, district_email_service
+from .services import DistrictDBService
+from .dependencies import district_db_service
 from .details import DistrictDetails
 
 from app.common import config, Logger
@@ -16,11 +16,7 @@ logger = Logger(name=__name__, log_path=config.district_log_path).get_logger()
 
 
 @router.get('/{district_id}', response_model=BaseAPIResponse)
-async def get_district(
-        district_id: int,
-        db_service: DistrictDBService = Depends(district_db_service),
-        email_service: DistrictEmailService = Depends(district_email_service)
-):
+async def get_district(district_id: int, db_service: DistrictDBService = Depends(district_db_service)):
     response = BaseAPIResponse()
     try:
         district_data = await db_service.get_district(district_id)
@@ -37,16 +33,12 @@ async def get_district(
         response.status = StatusType.error
         response.detail = DistrictDetails.exception_error
         logger.error(exc)
-        email_service.send_error_log(str(exc))
     finally:
         return response
 
 
 @router.get('/', response_model=BaseAPIResponse)
-async def get_districts(
-        db_service: DistrictDBService = Depends(district_db_service),
-        email_service: DistrictEmailService = Depends(district_email_service)
-):
+async def get_districts(db_service: DistrictDBService = Depends(district_db_service)):
     response = BaseAPIResponse()
     try:
         districts_data = await db_service.get_districts()
@@ -65,17 +57,12 @@ async def get_districts(
         response.status = StatusType.error
         response.detail = DistrictDetails.exception_error
         logger.error(exc)
-        email_service.send_error_log(str(exc))
     finally:
         return response
 
 
 @router.post('/', response_model=BaseAPIResponse)
-async def add_district(
-        district_data: DistrictAddSchema,
-        db_service: DistrictDBService = Depends(district_db_service),
-        email_service: DistrictEmailService = Depends(district_email_service)
-):
+async def add_district(district_data: DistrictAddSchema, db_service: DistrictDBService = Depends(district_db_service)):
     response = BaseAPIResponse()
     try:
         district_id = await db_service.add_district(district_data)
@@ -95,6 +82,5 @@ async def add_district(
         response.status = StatusType.error
         response.detail = DistrictDetails.exception_error
         logger.error(exc)
-        email_service.send_error_log(str(exc))
     finally:
         return response

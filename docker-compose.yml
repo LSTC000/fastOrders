@@ -43,26 +43,6 @@ services:
       - redis
       - db
       - rabbitmq
-  celery:
-    build: .
-    container_name: celery_app
-    restart: on-failure
-    command: [ "/fastapi_app/docker/celery.sh", "celery" ]
-    env_file:
-      - .env.docker
-    depends_on:
-      - app
-  flower:
-    build: .
-    container_name: flower_app
-    restart: on-failure
-    command: [ "/fastapi_app/docker/celery.sh", "flower" ]
-    ports:
-      - '5555:5555'
-    env_file:
-      - .env.docker
-    depends_on:
-      - celery
 
 volumes:
   db_data:
