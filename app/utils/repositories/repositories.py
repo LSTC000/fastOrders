@@ -31,6 +31,8 @@ class AbstractRepository(ABC):
     async def get_all(
             self,
             target_id: int = None,
+            option: strategy_options = None,
+            queryable_attribute: QueryableAttribute = None,
             query_expression: BinaryExpression = None
     ):
         raise NotImplementedError
@@ -98,15 +100,25 @@ class SQLAlchemyRepository(AbstractRepository):
     async def get_all(
             self,
             target_id: int = None,
+            option: strategy_options = None,
+            queryable_attribute: QueryableAttribute = None,
             query_expression: BinaryExpression = None
     ) -> list[dict] | None:
         async with async_session_maker() as session:
             if target_id is not None:
-                query = select(self.model).where(
-                    query_expression if query_expression is not None else self.model.id == target_id
-                )
+                if option is not None and queryable_attribute is not None:
+                    query = select(self.model).options(option(queryable_attribute)).where(
+                        query_expression if query_expression is not None else self.model.id == target_id
+                    )
+                else:
+                    query = select(self.model).where(
+                        query_expression if query_expression is not None else self.model.id == target_id
+                    )
             else:
-                query = select(self.model)
+                if option is not None and queryable_attribute is not None:
+                    query = select(self.model).options(option(queryable_attribute))
+                else:
+                    query = select(self.model)
 
             response: Result = await session.scalars(query)
             response_data = response.all()

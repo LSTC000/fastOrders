@@ -1,25 +1,94 @@
 from .schemas import OrderAddSchema
+from .repositories import Courier, CourierDistrict, Order
+from .utils import Utils
 
 from app.utils.repositories import AbstractRepository
 
 
 class OrderDBService:
-    def __init__(self, courier_repository: type[AbstractRepository]):
+    def __init__(
+            self,
+            order_repository: type[AbstractRepository],
+            courier_repository: type[AbstractRepository],
+            courier_district_repository: type[AbstractRepository]
+    ):
+        self.order_repository = order_repository()
         self.courier_repository = courier_repository()
+        self.courier_district_repository = courier_district_repository()
 
-    async def add_courier(self, courier_data: OrderAddSchema) -> int | None:
-        return await self.courier_repository.add_one(courier_data.model_dump())
+    async def add_order(self, order_data: OrderAddSchema) -> int | None:
+        couriers = await self.__get_couriers(order_data.district)
 
-    async def get_courier(self, courier_id: int) -> dict | None:
-        return await self.courier_repository.get_one(courier_id)
+        if couriers is not None:
+            for courier in couriers:
+                courier_data = await self.__check_courier(courier.get('courier_id'))
+                if courier_data is not None:
+                    new_courier_data, new_order_data = Utils.start_order(
+                        courier_data=courier_data,
+                        order_data=order_data.model_dump()
+                    )
 
-    async def get_couriers(self) -> dict | None:
-        return await self.courier_repository.get_all()
+                    order_id = await self.order_repository.add_one(new_order_data)
 
+                    if order_id is not None:
+                        await self.__edit_courier(
+                            courier_id=courier_data.get('id'),
+                            new_courier_data=new_courier_data
+                        )
 
-class CourierDistrictDBService:
-    def __init__(self, district_repository: type[AbstractRepository]):
-        self.district_repository = district_repository()
+                    return order_id
 
-    async def get_couriers(self, district_id: int) -> list[dict] | None:
-        return await self.district_repository.get_all(district_id)
+        return None
+
+    async def finish_order(self, order_id: int) -> int | None:
+        order_data = await self.order_repository.get_one(
+            target_id=order_id,
+            queryable_attribute=((Order.id == order_id) & (Order.status == 1))
+        )
+
+        if order_data is not None:
+            courier_data = await self.courier_repository.get_one(order_data.get('courier_id'))
+
+            new_courier_data, new_order_data = Utils.finish_order(
+                courier_data=courier_data,
+                order_data=order_data
+            )
+
+            await self.__edit_courier(
+                courier_id=courier_data.get('id'),
+                new_courier_data=new_courier_data
+            )
+
+            return await self.__edit_order(
+                order_id=order_data.get('id'),
+                new_order_data=new_order_data
+            )
+
+        return None
+
+    async def get_order(self, order_id: int) -> dict | None:
+        return await self.order_repository.get_one(order_id)
+
+    async def __edit_courier(self, courier_id: int, new_courier_data) -> int | None:
+        return await self.courier_repository.edit_one(
+            target_id=courier_id,
+            new_target_data=new_courier_data
+        )
+
+    async def __edit_order(self, order_id: int, new_order_data) -> int | None:
+        return await self.order_repository.edit_one(
+            target_id=order_id,
+            new_target_data=new_order_data
+        )
+
+    async def __check_courier(self, courier_id: int) -> dict | None:
+        return await self.courier_repository.get_one(
+            target_id=courier_id,
+            query_expression=((Courier.id == courier_id) & (Courier.status == 0))
+        )
+
+    async def __get_couriers(self, district_id: int) -> list[dict] | None:
+        return await self.courier_district_repository.get_all(
+            target_id=district_id,
+            query_expression=(CourierDistrict.district_id == district_id)
+        )

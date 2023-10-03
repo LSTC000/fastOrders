@@ -13,5 +13,5 @@ class CourierDistrictRepository(SQLAlchemyRepository):
     model = CourierDistrict
 
 
-class CourierOrderRepository(SQLAlchemyRepository):
+class OrderRepository(SQLAlchemyRepository):
     model = Order

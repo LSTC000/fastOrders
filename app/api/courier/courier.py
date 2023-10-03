@@ -1,6 +1,6 @@
-from .schemas import CourierGetSchema, CourierGetAllSchema, CourierAddSchema
-from .services import CourierDBService, CourierDistrictDBService, CourierOrderDBService
-from .dependencies import courier_db_service, courier_district_db_service, courier_order_db_service
+from .schemas import CourierGetSchema, CourierGetAllSchema, CourierAddSchema, ActiveOrderSchema
+from .services import CourierDBService
+from .dependencies import courier_db_service
 from .details import CourierDetails
 from .utils import Utils
 
@@ -17,21 +17,21 @@ logger = Logger(name=__name__, log_path=config.courier_log_path).get_logger()
 
 
 @router.get('/{courier_id}', response_model=BaseAPIResponse)
-async def get_courier(
-        courier_id: int,
-        db_service: CourierDBService = Depends(courier_db_service),
-        order_db_service: CourierOrderDBService = Depends(courier_order_db_service),
-):
+async def get_courier(courier_id: int, db_service: CourierDBService = Depends(courier_db_service),):
     response = BaseAPIResponse()
     try:
         courier_data = await db_service.get_courier(courier_id)
 
         if courier_data is not None:
+            active_order = await db_service.get_active_order(courier_id)
             response.data = {
                 'courier_data': CourierGetSchema(
                     id=courier_id,
                     name=courier_data.get('name'),
-                    active_order=await order_db_service.get_active_order(courier_id),
+                    active_order=ActiveOrderSchema(
+                        order_id=active_order.get('id'),
+                        order_name=active_order.get('name')
+                    ) if active_order is not None else active_order,
                     avg_order_complete_time=Utils.avg_order_complete_time(
                         complete_time=courier_data.get('complete_time'),
                         complete_orders=courier_data.get('complete_orders')
@@ -81,18 +81,14 @@ async def get_couriers(db_service: CourierDBService = Depends(courier_db_service
 
 
 @router.post('/', response_model=BaseAPIResponse)
-async def add_courier(
-        courier_data: CourierAddSchema,
-        db_service: CourierDBService = Depends(courier_db_service),
-        district_db_service: CourierDistrictDBService = Depends(courier_district_db_service)
-):
+async def add_courier(courier_data: CourierAddSchema, db_service: CourierDBService = Depends(courier_db_service)):
     response = BaseAPIResponse()
     try:
         courier_id = await db_service.add_courier(courier_data)
 
         if courier_id is not None:
             try:
-                await district_db_service.add_courier_districts(
+                await db_service.add_courier_districts(
                     courier_id=courier_id,
                     districts=courier_data.districts
                 )

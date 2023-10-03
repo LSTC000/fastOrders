@@ -3,5 +3,3 @@ venv
 .env
 logs/*
 **/__pycache__
-task
-test.py

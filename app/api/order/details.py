@@ -5,8 +5,10 @@ from app.utils.response import Details
 
 @dataclass(frozen=True)
 class OrderDetails(Details):
-    district_name_exist: str = 'This district already exist'
-    get_district_error: str = ('An error occurred while searching for the district. Check the specified '
-                               'district id and try again later.')
-    get_districts_error: str = 'No districts have been created yet.'
-    add_district_error: str = 'An error occurred when adding a district. Try again later.'
+    district_does_not_exist: str = 'The district you specified does not exist'
+    get_order_error: str = ('An error occurred while searching for the order. Check the specified '
+                            'order id and try again later.')
+    add_order_error: str = ('An error occurred while adding an order. '
+                            'No couriers were found for this order. Try again later.')
+    finish_order_error: str = ('This order could not be found. It may have already been completed.'
+                               ' Check the order id and try again later.')
