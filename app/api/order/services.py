@@ -1,5 +1,6 @@
 from .schemas import OrderAddSchema
-from .repositories import Courier, CourierDistrict, Order
+from .models import Order
+from .repositories import Courier, CourierDistrict
 from .utils import Utils
 
 from app.utils.repositories import AbstractRepository
@@ -16,13 +17,15 @@ class OrderDBService:
         self.courier_repository = courier_repository()
         self.courier_district_repository = courier_district_repository()
 
-    async def add_order(self, order_data: OrderAddSchema) -> int | None:
+    async def add_order(self, order_data: OrderAddSchema) -> tuple[int, int] | None:
         couriers = await self.__get_couriers(order_data.district)
 
         if couriers is not None:
             for courier in couriers:
                 courier_data = await self.__check_courier(courier.get('courier_id'))
                 if courier_data is not None:
+                    courier_id = courier_data.get('id')
+
                     new_courier_data, new_order_data = Utils.start_order(
                         courier_data=courier_data,
                         order_data=order_data.model_dump()
@@ -30,20 +33,22 @@ class OrderDBService:
 
                     order_id = await self.order_repository.add_one(new_order_data)
 
-                    if order_id is not None:
-                        await self.__edit_courier(
-                            courier_id=courier_data.get('id'),
-                            new_courier_data=new_courier_data
-                        )
+                    if order_id is None:
+                        return order_id
 
-                    return order_id
+                    await self.__edit_courier(
+                        courier_id=courier_id,
+                        new_courier_data=new_courier_data
+                    )
+
+                    return order_id, courier_id
 
         return None
 
     async def finish_order(self, order_id: int) -> int | None:
         order_data = await self.order_repository.get_one(
             target_id=order_id,
-            queryable_attribute=((Order.id == order_id) & (Order.status == 1))
+            query_expression=((Order.id == order_id) & (Order.status == 1))
         )
 
         if order_data is not None:
