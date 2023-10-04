@@ -4,6 +4,6 @@ venv
 .env.dist
 .git
 .gitignore
-app/tests
+README.md
 Makefile
 fastOrders.drawio
