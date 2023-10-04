@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 class Utils:
     @staticmethod
-    def start_order(courier_data: dict, order_data: dict) -> tuple[dict, dict]:
+    def start_order_new_data(courier_data: dict, order_data: dict) -> tuple[dict, dict]:
         new_courier_data = {
             'status': 1
         }
@@ -28,7 +28,7 @@ class Utils:
         return new_courier_data, new_order_data
 
     @staticmethod
-    def finish_order(courier_data: dict, order_data: dict) -> tuple[dict, dict]:
+    def finish_order_new_data(courier_data: dict, order_data: dict) -> tuple[dict, dict]:
         finish_order_at = datetime.utcnow()
         finish_order_at_tmp = finish_order_at.timestamp()
         start_order_at_tmp = order_data['start_at'].timestamp()

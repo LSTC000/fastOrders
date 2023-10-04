@@ -26,7 +26,7 @@ class OrderDBService:
                 if courier_data is not None:
                     courier_id = courier_data.get('id')
 
-                    new_courier_data, new_order_data = Utils.start_order(
+                    new_courier_data, new_order_data = Utils.start_order_new_data(
                         courier_data=courier_data,
                         order_data=order_data.model_dump()
                     )
@@ -54,7 +54,7 @@ class OrderDBService:
         if order_data is not None:
             courier_data = await self.courier_repository.get_one(order_data.get('courier_id'))
 
-            new_courier_data, new_order_data = Utils.finish_order(
+            new_courier_data, new_order_data = Utils.finish_order_new_data(
                 courier_data=courier_data,
                 order_data=order_data
             )
