@@ -28,6 +28,7 @@ async def get_courier(courier_id: int, db_service: CourierDBService = Depends(co
     JSON объект { 'detail': [] } c подробной информацией об ошибке в ключе 'detail'.
     """
 
+    # Создаём объект ответа API.
     response = BaseAPIResponse()
 
     try:
@@ -63,6 +64,7 @@ async def get_couriers(db_service: CourierDBService = Depends(courier_db_service
     возникла ошибка на стороне сервера. В обоих случаях код ответа: 200. Данные о курьерах хранятся внутри ключа 'data'.
     """
 
+    # Создаём объект ответа API.
     response = BaseAPIResponse()
 
     try:
@@ -104,13 +106,14 @@ async def add_courier(courier_data: CourierAddSchema, db_service: CourierDBServi
     JSON объект { 'detail': [] } c подробной информацией об ошибке в ключе 'detail'.
     """
 
+    # Создаём объект ответа API.
     response = BaseAPIResponse()
 
     try:
         # Получаем id курьера в случае его успешного создания.
         courier_id = await db_service.add_courier(courier_data)
 
-        # Проверям валидны ли полученные данные.
+        # Проверям валиден ли полученный id.
         if courier_id is not None:
             # В случае успеха добавляем все районы курьера в промежуточную таблицу couriers_districts.
             # Если в процессе добавления районов для курьера не возникнет ошибки IntegrityError, то
