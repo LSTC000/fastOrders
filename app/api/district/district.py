@@ -28,6 +28,7 @@ async def get_district(district_id: int, db_service: DistrictDBService = Depends
     JSON объект { 'detail': [] } c подробной информацией об ошибке в ключе 'detail'.
     """
 
+    # Создаём объект ответа API.
     response = BaseAPIResponse()
 
     try:
@@ -63,6 +64,7 @@ async def get_districts(db_service: DistrictDBService = Depends(district_db_serv
     возникла ошибка на стороне сервера. В обоих случаях код ответа: 200. Данные о районах хранятся внутри ключа 'data'.
     """
 
+    # Создаём объект ответа API.
     response = BaseAPIResponse()
 
     try:
@@ -104,13 +106,14 @@ async def add_district(district_data: DistrictAddSchema, db_service: DistrictDBS
     JSON объект { 'detail': [] } c подробной информацией об ошибке в ключе 'detail'.
     """
 
+    # Создаём объект ответа API.
     response = BaseAPIResponse()
 
     try:
         # Получаем id района в случае его успешного создания.
         district_id = await db_service.add_district(district_data)
 
-        # Проверям валидны ли полученные данные.
+        # Проверям валиден ли полученный id.
         if district_id is not None:
             # В случае успеха отправляем id района пользователю.
             response.data = {'district_id': district_id}
