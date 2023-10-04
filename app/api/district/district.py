@@ -107,19 +107,19 @@ async def add_district(district_data: DistrictAddSchema, db_service: DistrictDBS
     response = BaseAPIResponse()
 
     try:
-        # Получаем id района в случае его успешного добавления.
+        # Получаем id района в случае его успешного создания.
         district_id = await db_service.add_district(district_data)
 
         # Проверям валидны ли полученные данные.
         if district_id is not None:
-            # В случае успеха id района пользователю.
+            # В случае успеха отправляем id района пользователю.
             response.data = {'district_id': district_id}
         else:
             # В случае ошибки сообщаем пользователю, чтобы он повторил попытку добавления нового района позже.
             response.status = StatusType.error
             response.detail = DistrictDetails.add_district_error
     except IntegrityError:
-        # В пользователь ввёл название района, которое уже есть в БД, то сообщаем ему об этом.
+        # Если пользователь ввёл название района, которое уже есть в БД, то сообщаем ему об этом.
         response.status = StatusType.error
         response.detail = DistrictDetails.district_name_exist
     except HTTPException as exc:
