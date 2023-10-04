@@ -7,10 +7,12 @@ app-start:
 .PHONY: docker
 docker-build:
 	$(DC) build
-docker-start:
+docker-up:
 	$(DC) up -d
 docker-stop:
 	$(DC) stop
+docker-start:
+	$(DC) start
 docker-down:
 	$(DC) down
 docker-down-v:
